@@ -7,7 +7,8 @@ interface Props {
 function TaskForm({ onAddTask }: Props) {
   const [title, setTitle] = useState("");
 
-  const handleSubmit = () => {
+  const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
     if (!title.trim()) return;
 
     onAddTask(title);
@@ -15,18 +16,19 @@ function TaskForm({ onAddTask }: Props) {
   };
 
   return (
-    <div>
+    <form className="task-form" onSubmit={handleSubmit}>
       <input
         type="text"
-        placeholder="Enter task"
+        aria-label="New task title"
+        placeholder="What needs to get done?"
         value={title}
         onChange={(e) => setTitle(e.target.value)}
       />
 
-      <button onClick={handleSubmit}>
-        Add Task
+      <button type="submit">
+        Add task
       </button>
-    </div>
+    </form>
   );
 }
 
