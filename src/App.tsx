@@ -1,49 +1,78 @@
 import { useEffect, useState } from "react";
-//test
+//test123
 
 import TaskForm from "./components/TaskForm";
 import TaskList from "./components/TaskList";
 
-import api from "./api/taskApi";
+import taskApi from "./api/taskApi";
 import type { Task } from "./types/Task";
 
 function App() {
   const [tasks, setTasks] = useState<Task[]>([]);
+  const [error, setError] = useState("");
 
   const loadTasks = async () => {
-    const response = await api.get("/tasks");
-    setTasks(response.data);
+    const taskList = await taskApi.getTasks();
+    setTasks(taskList);
   };
 
   useEffect(() => {
-    loadTasks();
+    void loadTasks();
   }, []);
 
   const addTask = async (title: string) => {
-    await api.post("/tasks", {
+    await taskApi.createTask({
       title,
       description: "",
     });
 
-    loadTasks();
+    await loadTasks();
   };
 
   const toggleTask = async (
     task: Task
   ) => {
-    await api.patch(`/tasks/${task.id}`, {
+    await taskApi.updateTask(task.id, {
       completed: !task.completed,
     });
 
-    loadTasks();
+    await loadTasks();
+  };
+
+  const updateTask = async (task: Task, title: string) => {
+    setError("");
+    let updatedTask: Task;
+
+    try {
+      updatedTask = await taskApi.updateTask(task.id, {
+        title,
+        description: task.description ?? "",
+        completed: task.completed,
+      });
+    } catch (requestError) {
+      setError(requestError instanceof Error ? requestError.message : "Unable to update task.");
+      throw requestError;
+    }
+
+    setTasks((currentTasks) =>
+      currentTasks.map((currentTask) =>
+        currentTask.id === updatedTask.id ? updatedTask : currentTask,
+      ),
+    );
+
+    try {
+      await loadTasks();
+    } catch (requestError) {
+      setError(requestError instanceof Error ? requestError.message : "Unable to reload tasks.");
+    }
   };
 
   const deleteTask = async (
     id: number
   ) => {
-    await api.delete(`/tasks/${id}`);
+    await taskApi.deleteTask(id);
 
-    loadTasks();
+    await loadTasks();
   };
 
   return (
@@ -82,8 +111,15 @@ function App() {
             <span className="task-count">{tasks.filter((task) => !task.completed).length} open</span>
           </div>
 
+          {error && <p className="error-message" role="alert">{error}</p>}
+
           <TaskForm onAddTask={addTask} />
-          <TaskList tasks={tasks} onToggle={toggleTask} onDelete={deleteTask} />
+          <TaskList
+            tasks={tasks}
+            onToggle={toggleTask}
+            onUpdate={updateTask}
+            onDelete={deleteTask}
+          />
         </section>
       </main>
 
