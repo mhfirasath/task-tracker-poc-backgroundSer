@@ -1,16 +1,11 @@
-import axios from "axios";
-
 import type { Task } from "../types/Task";
+import client from "./client";
 
 interface ApiResponse<T> {
   statusCode: number;
   message: string;
   data: T;
 }
-
-const client = axios.create({
-  baseURL: "http://localhost:3000",
-});
 
 const unwrap = <T>(response: { data: ApiResponse<T> }) => response.data.data;
 

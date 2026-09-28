@@ -5,35 +5,48 @@ import TaskForm from "./components/TaskForm";
 import TaskList from "./components/TaskList";
 import Dashboard from "./components/Dashboard";
 
+import authApi from "./api/authApi";
 import taskApi from "./api/taskApi";
+import type { AuthSession } from "./api/authApi";
 import type { Task } from "./types/Task";
 
-const DUMMY_USERNAME = "admin";
-const DUMMY_PASSWORD = "password";
-
-function LoginPage({ onLogin }: { onLogin: () => void }) {
+function LoginPage({ onLogin }: { onLogin: (session: AuthSession) => void }) {
+  const [isRegistering, setIsRegistering] = useState(false);
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    setError("");
+    setIsSubmitting(true);
 
-    if (username === DUMMY_USERNAME && password === DUMMY_PASSWORD) {
-      onLogin();
-      return;
+    try {
+      if (isRegistering) {
+        await authApi.register(username, password);
+      }
+
+      const session = await authApi.login(username, password);
+      onLogin(session);
+    } catch (requestError) {
+      setError(requestError instanceof Error ? requestError.message : "Unable to authenticate.");
+    } finally {
+      setIsSubmitting(false);
     }
-
-    setError("That username or password is not correct.");
   };
 
   return (
     <div className="login-shell">
       <main className="login-card">
         <div className="login-brand" aria-hidden="true">T</div>
-        <p className="eyebrow">Welcome back</p>
-        <h1>Sign in to Task Tracker.</h1>
-        <p className="login-copy">Pick up where you left off and keep your priorities moving.</p>
+        <p className="eyebrow">{isRegistering ? "Get started" : "Welcome back"}</p>
+        <h1>{isRegistering ? "Create your Task Tracker account." : "Sign in to Task Tracker."}</h1>
+        <p className="login-copy">
+          {isRegistering
+            ? "Create an account to keep your personal tasks separate and secure."
+            : "Pick up where you left off and keep your priorities moving."}
+        </p>
 
         <form className="login-form" onSubmit={handleSubmit}>
           <label htmlFor="username">Username</label>
@@ -57,11 +70,22 @@ function LoginPage({ onLogin }: { onLogin: () => void }) {
           />
 
           {error && <p className="login-error" role="alert">{error}</p>}
-          <button type="submit">Sign in</button>
+          <button type="submit" disabled={isSubmitting}>
+            {isSubmitting ? "Please wait..." : isRegistering ? "Create account" : "Sign in"}
+          </button>
         </form>
 
-        <p className="demo-credentials">
-          Demo access: <strong>{DUMMY_USERNAME}</strong> / <strong>{DUMMY_PASSWORD}</strong>
+        <p className="auth-switch">
+          {isRegistering ? "Already have an account?" : "New to Task Tracker?"}{" "}
+          <button
+            type="button"
+            onClick={() => {
+              setError("");
+              setIsRegistering((current) => !current);
+            }}
+          >
+            {isRegistering ? "Sign in" : "Create an account"}
+          </button>
         </p>
       </main>
     </div>
@@ -69,7 +93,7 @@ function LoginPage({ onLogin }: { onLogin: () => void }) {
 }
 
 function App() {
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [session, setSession] = useState<AuthSession | null>(null);
   const [activePage, setActivePage] = useState<"dashboard" | "tasks">("dashboard");
   const [tasks, setTasks] = useState<Task[]>([]);
   const [error, setError] = useState("");
@@ -80,12 +104,12 @@ function App() {
   };
 
   useEffect(() => {
-    if (!isAuthenticated) return;
+    if (!session) return;
     void loadTasks();
-  }, [isAuthenticated]);
+  }, [session]);
 
-  if (!isAuthenticated) {
-    return <LoginPage onLogin={() => setIsAuthenticated(true)} />;
+  if (!session) {
+    return <LoginPage onLogin={setSession} />;
   }
 
   const addTask = async (title: string) => {
@@ -163,7 +187,7 @@ function App() {
     setTasks([]);
     setError("");
     setActivePage("dashboard");
-    setIsAuthenticated(false);
+    setSession(null);
   };
 
   return (
@@ -194,7 +218,7 @@ function App() {
         <div className="side-nav-footer">
           <span className="user-avatar">A</span>
           <div>
-            <strong>admin</strong>
+            <strong>{session.username}</strong>
             <span>Personal workspace</span>
           </div>
           <button className="logout-button" type="button" onClick={handleLogout}>
@@ -209,7 +233,7 @@ function App() {
           <span className="top-bar-date">Task Tracker</span>
         </header>
 
-        {activePage === "dashboard" ? <Dashboard tasks={tasks} /> : <main className="main-content">
+        {activePage === "dashboard" ? <Dashboard tasks={tasks} username={session.username} /> : <main className="main-content">
         <section className="page-intro">
           <div>
             <p className="eyebrow">Your productivity, organized</p>

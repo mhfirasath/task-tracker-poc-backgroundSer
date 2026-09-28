@@ -2,9 +2,10 @@ import type { Task } from "../types/Task";
 
 interface Props {
   tasks: Task[];
+  username: string;
 }
 
-function Dashboard({ tasks }: Props) {
+function Dashboard({ tasks, username }: Props) {
   const completedTasks = tasks.filter((task) => task.completed).length;
   const openTasks = tasks.length - completedTasks;
   const completionRate = tasks.length === 0 ? 0 : Math.round((completedTasks / tasks.length) * 100);
@@ -14,7 +15,7 @@ function Dashboard({ tasks }: Props) {
       <section className="dashboard-welcome">
         <div>
           <p className="eyebrow">Overview</p>
-          <h1>Good to see you, admin.</h1>
+          <h1>Good to see you, {username}.</h1>
           <p className="intro-copy">Here is the current rhythm of your work.</p>
         </div>
         <div className="progress-ring" aria-label={`${completionRate}% of tasks complete`}>

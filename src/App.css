@@ -62,9 +62,11 @@
 .login-form input:focus { border-color: var(--teal); background: var(--paper); box-shadow: 0 0 0 3px rgba(30, 123, 120, .12); }
 .login-form button { margin-top: 15px; padding: 13px 20px; color: white; background: var(--teal); border-radius: 5px; font-size: 14px; font-weight: 700; }
 .login-form button:hover { background: var(--teal-dark); }
+.login-form button:disabled { cursor: wait; opacity: .65; }
 .login-error { margin: 8px 0 0; padding: 10px 12px; color: #9b4436; background: #fff0ed; border: 1px solid #f0c7c0; border-radius: 5px; font-size: 13px; }
-.demo-credentials { margin: 25px 0 0; color: var(--muted); font-size: 12px; text-align: center; }
-.demo-credentials strong { color: var(--ink); }
+.auth-switch { margin: 25px 0 0; color: var(--muted); font-size: 12px; text-align: center; }
+.auth-switch button { padding: 0; color: var(--teal); background: transparent; font-size: inherit; font-weight: 700; }
+.auth-switch button:hover { text-decoration: underline; }
 .header-inner, .main-content, .site-footer { width: min(1080px, calc(100% - 48px)); margin: 0 auto; }
 .header-inner { min-height: 76px; display: flex; align-items: center; justify-content: space-between; }
 .brand { display: inline-flex; align-items: center; gap: 11px; color: var(--ink); font-family: var(--heading); font-weight: 700; font-size: 18px; text-decoration: none; }
