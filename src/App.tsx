@@ -1,14 +1,20 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { FormEvent } from "react";
 
 import TaskForm from "./components/TaskForm";
 import TaskList from "./components/TaskList";
+import TaskFilterBar from "./components/TaskFilterBar";
 import Dashboard from "./components/Dashboard";
 
 import authApi from "./api/authApi";
 import taskApi from "./api/taskApi";
 import type { AuthSession } from "./api/authApi";
 import type { Task } from "./types/Task";
+import { defaultTaskFilters } from "./types/TaskFilters";
+import type { TaskFilters } from "./types/TaskFilters";
+import { hasActiveTaskFilters, matchesTaskFilters } from "./utils/taskFilters";
+
+const SEARCH_DEBOUNCE_MS = 300;
 
 function LoginPage({ onLogin }: { onLogin: (session: AuthSession) => void }) {
   const [isRegistering, setIsRegistering] = useState(false);
@@ -97,16 +103,31 @@ function App() {
   const [activePage, setActivePage] = useState<"dashboard" | "tasks">("dashboard");
   const [tasks, setTasks] = useState<Task[]>([]);
   const [error, setError] = useState("");
+  const [filters, setFilters] = useState<TaskFilters>(defaultTaskFilters);
+  // Filters are applied after a short pause so typing doesn't fire a request per keystroke.
+  const [appliedFilters, setAppliedFilters] = useState<TaskFilters>(defaultTaskFilters);
+  const latestRequestId = useRef(0);
 
-  const loadTasks = async () => {
-    const taskList = await taskApi.getTasks();
-    setTasks(taskList);
+  const loadTasks = async (activeFilters: TaskFilters = appliedFilters) => {
+    const requestId = ++latestRequestId.current;
+    const taskList = await taskApi.getTasks(activeFilters);
+
+    // Ignore responses from earlier searches that resolve after a newer one.
+    if (requestId === latestRequestId.current) {
+      setTasks(taskList);
+    }
   };
 
   useEffect(() => {
+    const timer = window.setTimeout(() => setAppliedFilters(filters), SEARCH_DEBOUNCE_MS);
+    return () => window.clearTimeout(timer);
+  }, [filters]);
+
+  useEffect(() => {
     if (!session) return;
-    void loadTasks();
-  }, [session]);
+    void loadTasks(appliedFilters);
+    // Only reload when the session or applied filters change.
+  }, [session, appliedFilters]);
 
   if (!session) {
     return <LoginPage onLogin={setSession} />;
@@ -182,13 +203,28 @@ function App() {
     await loadTasks();
   };
 
+  const resetFilters = () => {
+    setFilters(defaultTaskFilters);
+    setAppliedFilters(defaultTaskFilters);
+  };
+
+  const showDashboard = () => {
+    // The dashboard needs the full task list, so clear any active search first.
+    resetFilters();
+    setActivePage("dashboard");
+  };
+
   const handleLogout = () => {
     window.sessionStorage.clear();
     setTasks([]);
     setError("");
     setActivePage("dashboard");
+    resetFilters();
     setSession(null);
   };
+
+  const visibleTasks = tasks.filter((task) => matchesTaskFilters(task, appliedFilters));
+  const isFiltered = hasActiveTaskFilters(appliedFilters);
 
   return (
     <div className="authenticated-shell">
@@ -201,7 +237,7 @@ function App() {
           <button
             className={`nav-item ${activePage === "dashboard" ? "active" : ""}`}
             type="button"
-            onClick={() => setActivePage("dashboard")}
+            onClick={showDashboard}
           >
             <span aria-hidden="true">▦</span>
             Dashboard
@@ -242,9 +278,9 @@ function App() {
               Capture what matters, then make steady progress one task at a time.
             </p>
           </div>
-          <div className="task-summary" aria-label={`${tasks.length} total tasks`}>
-            <strong>{tasks.length}</strong>
-            <span>Total tasks</span>
+          <div className="task-summary" aria-label={`${visibleTasks.length} ${isFiltered ? "matching" : "total"} tasks`}>
+            <strong>{visibleTasks.length}</strong>
+            <span>{isFiltered ? "Matching tasks" : "Total tasks"}</span>
           </div>
         </section>
 
@@ -254,14 +290,16 @@ function App() {
               <h2 id="task-list-heading">Task list</h2>
               <p>Stay on top of your priorities.</p>
             </div>
-            <span className="task-count">{tasks.filter((task) => !task.completed).length} open</span>
+            <span className="task-count">{visibleTasks.filter((task) => !task.completed).length} open</span>
           </div>
 
           {error && <p className="error-message" role="alert">{error}</p>}
 
           <TaskForm onAddTask={addTask} />
+          <TaskFilterBar filters={filters} onChange={setFilters} />
           <TaskList
-            tasks={tasks}
+            tasks={visibleTasks}
+            isFiltered={isFiltered}
             onToggle={toggleTask}
             onUpdate={updateTask}
             onDelete={deleteTask}

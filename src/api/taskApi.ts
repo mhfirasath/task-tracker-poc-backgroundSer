@@ -1,4 +1,5 @@
 import type { Task } from "../types/Task";
+import type { TaskFilters } from "../types/TaskFilters";
 import client from "./client";
 
 interface ApiResponse<T> {
@@ -10,8 +11,16 @@ interface ApiResponse<T> {
 const unwrap = <T>(response: { data: ApiResponse<T> }) => response.data.data;
 
 const taskApi = {
-  getTasks: async (): Promise<Task[]> => {
-    const response = await client.get<ApiResponse<Task[]>>("/tasks");
+  getTasks: async (filters?: TaskFilters): Promise<Task[]> => {
+    const q = filters?.q.trim();
+    const status = filters?.status ?? "all";
+
+    const response = await client.get<ApiResponse<Task[]>>("/tasks", {
+      params: {
+        q: q || undefined,
+        completed: status === "all" ? undefined : status === "complete",
+      },
+    });
     return unwrap(response);
   },
 

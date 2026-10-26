@@ -4,6 +4,7 @@ import type { Task } from "../types/Task";
 
 interface Props {
   tasks: Task[];
+  isFiltered?: boolean;
   onToggle: (task: Task) => void;
   onUpdate: (task: Task, title: string) => Promise<void>;
   onDelete: (id: number) => void;
@@ -11,6 +12,7 @@ interface Props {
 
 function TaskList({
   tasks,
+  isFiltered = false,
   onToggle,
   onUpdate,
   onDelete,
@@ -44,6 +46,16 @@ function TaskList({
       setSavingId(null);
     }
   };
+
+  if (tasks.length === 0 && isFiltered) {
+    return (
+      <div className="empty-state">
+        <span className="empty-icon">?</span>
+        <strong>No tasks match your filters</strong>
+        <p>Try a different search or show all tasks.</p>
+      </div>
+    );
+  }
 
   if (tasks.length === 0) {
     return (
