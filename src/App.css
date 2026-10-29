@@ -339,3 +339,8 @@ button { border: 0; cursor: pointer; font: inherit; }
     border-right-color: var(--border);
   }
 }
+
+.admin-user-select { padding: 10px 14px; color: var(--ink); background: var(--wash); border: 1px solid transparent; border-radius: 5px; font-size: 13px; }
+.admin-table th:first-child, .admin-table td:first-child { width: 120px; }
+.admin-table th:last-child, .admin-table td:last-child { text-align: left; }
+.task-description { margin: 4px 0 0; color: var(--muted); font-size: 13px; }
